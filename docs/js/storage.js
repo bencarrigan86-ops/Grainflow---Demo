@@ -1,0 +1,319 @@
+const KEY = 'grainflow.v1';
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function defaultCommodities() {
+  return [
+    { name: 'Wheat', angleOfRepose: 24, testWeight: 0.82 },
+    { name: 'Barley', angleOfRepose: 27, testWeight: 0.69 },
+    { name: 'Chickpeas', angleOfRepose: 28, testWeight: 0.76 },
+    { name: 'Faba Beans', angleOfRepose: 25, testWeight: 0.785 },
+    { name: 'Canola', angleOfRepose: 26, testWeight: 0.67 },
+    { name: 'Sorghum', angleOfRepose: 24, testWeight: 0.77 },
+    { name: 'Fallow', angleOfRepose: 0, testWeight: 0 },
+  ].map((c) => ({
+    id: uid(),
+    mtmPrice: 0,
+    openingStock: 0,
+    retainedSeed: 0,
+    ...c,
+  }));
+}
+
+// DEMO BUILD: seeded with sample data so a first-time visitor sees a
+// populated app immediately, instead of an empty one. This is the only
+// difference from the real app's source.
+function defaultYear() {
+  return {
+    commodities: [
+      { id: 'msoaclr41fqqln', mtmPrice: 340, openingStock: 0, retainedSeed: 20, name: 'Wheat', angleOfRepose: 24, testWeight: 0.82 },
+      { id: 'msoaclr4wmiuqh', mtmPrice: 265, openingStock: 0, retainedSeed: 15, name: 'Barley', angleOfRepose: 27, testWeight: 0.69 },
+      { id: 'msoaclr4mmfx5i', mtmPrice: 720, openingStock: 0, retainedSeed: 10, name: 'Chickpeas', angleOfRepose: 28, testWeight: 0.76 },
+      { id: 'msoaclr4x9ok1n', mtmPrice: 0, openingStock: 0, retainedSeed: 0, name: 'Faba Beans', angleOfRepose: 25, testWeight: 0.785 },
+      { id: 'msoaclr4ta45xl', mtmPrice: 0, openingStock: 0, retainedSeed: 0, name: 'Canola', angleOfRepose: 26, testWeight: 0.67 },
+      { id: 'msoaclr4iuzus2', mtmPrice: 0, openingStock: 0, retainedSeed: 0, name: 'Sorghum', angleOfRepose: 24, testWeight: 0.77 },
+      { id: 'msoaclr4jtyzgd', mtmPrice: 0, openingStock: 0, retainedSeed: 0, name: 'Fallow', angleOfRepose: 0, testWeight: 0 },
+    ],
+    fields: [
+      { id: 'msoactt1a1hbqj', name: 'North Paddock', areaHa: 210, commodityId: 'msoaclr41fqqln', yieldTHa: 4.9, yieldMode: 'estimate', ureaRequiredKgHa: 90, ureaAppliedKgHa: 90, seedVariety: 'Scepter', seedRateKgHa: 65 },
+      { id: 'msoactx686ftou', name: 'South Paddock', areaHa: 175, commodityId: 'msoaclr41fqqln', yieldTHa: 5.2, yieldMode: 'estimate', ureaRequiredKgHa: 90, ureaAppliedKgHa: 60, seedVariety: 'Scepter', seedRateKgHa: 65 },
+      { id: 'msoacu14yzyr41', name: 'River Block', areaHa: 140, commodityId: 'msoaclr4wmiuqh', yieldTHa: 5.6, yieldMode: 'estimate', ureaRequiredKgHa: 75, ureaAppliedKgHa: 75, seedVariety: 'Spartacus CL', seedRateKgHa: 70 },
+      { id: 'msoacu4lhqzjhb', name: 'Home Paddock', areaHa: 95, commodityId: 'msoaclr4mmfx5i', yieldTHa: 2.1, yieldMode: 'estimate', ureaRequiredKgHa: 0, ureaAppliedKgHa: 0, seedVariety: 'Kyabra', seedRateKgHa: 90 },
+    ],
+    sales: [
+      { id: 'msoad38fu5po5n', date: '', commodityId: 'msoaclr41fqqln', grade: 'APW1', buyer: 'CBH', contractNo: 'C-10245', location: 'Wagga Wagga', deliveryStart: '2026-11-15', deliveryEnd: '2026-12-15', tons: 900, tonsDelivered: 400, price: 350, freight: 22, premiumDiscount: 0, leviesPct: 0.0102, tolerancePct: 5, toleranceCapTons: 20, brokerNote: '', notes: '' },
+      { id: 'msoad3chrx534o', date: '', commodityId: 'msoaclr4wmiuqh', grade: 'F1', buyer: 'Cargill', contractNo: 'C-10301', location: 'Junee', deliveryStart: '2026-12-01', deliveryEnd: '2026-12-31', tons: 400, tonsDelivered: 0, price: 285, freight: 18, premiumDiscount: 0, leviesPct: 0.0102, tolerancePct: 5, toleranceCapTons: 20, brokerNote: '', notes: '' },
+    ],
+    storages: [
+      { id: 'msoadgd3xpn0t4', kind: 'silo', name: 'Silo 1 (155t)', commodityId: 'msoaclr41fqqln', openingStock: 40, capacityTons: 155, angleOfRepose: null, testWeight: null, radius: 2.95, coneAngle: 35, currentHeight: 4.8, fillState: 'peak', createdAt: 1786430127639 },
+      { id: 'msoadgjk4qccfc', kind: 'bunker', name: 'Bunker 1', commodityId: 'msoaclr4wmiuqh', openingStock: 0, capacityTons: null, angleOfRepose: 24, testWeight: null, width: 24, length: 60, tarpOverhangM: 1.5, createdAt: 1786430127872 },
+    ],
+    movements: [
+      { id: 'msoadgrgpr8t2s', date: '2026-11-18', fromType: 'field', fromId: 'msoactt1a1hbqj', toType: 'silo', toId: 'msoadgd3xpn0t4', truckRego: '1ABC234', driver: 'Dave', tons: 22.4, weightStatus: 'final', notes: '' },
+    ],
+  };
+}
+
+function defaultData() {
+  const year = String(new Date().getFullYear());
+  return {
+    version: 2,
+    currentYear: year,
+    years: { [year]: defaultYear() },
+  };
+}
+
+// Bring an older single-season save (or one missing fields we've since added)
+// up to the current {version, currentYear, years} shape without losing data.
+function migrate(parsed) {
+  if (parsed && parsed.years && typeof parsed.years === 'object') {
+    const fresh = defaultData();
+    return {
+      version: 2,
+      currentYear: parsed.currentYear && parsed.years[parsed.currentYear] ? parsed.currentYear : Object.keys(parsed.years)[0],
+      years: Object.fromEntries(
+        Object.entries(parsed.years).map(([y, yd]) => [y, { ...defaultYear(), ...yd }])
+      ),
+    } || fresh;
+  }
+  // Old flat shape: { commodities, fields, sales, storages, movements }
+  if (parsed && (parsed.commodities || parsed.fields || parsed.sales || parsed.storages)) {
+    const year = String(new Date().getFullYear());
+    return {
+      version: 2,
+      currentYear: year,
+      years: { [year]: { ...defaultYear(), ...parsed } },
+    };
+  }
+  return defaultData();
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return defaultData();
+    return migrate(JSON.parse(raw));
+  } catch (e) {
+    console.error('Failed to load data, resetting.', e);
+    return defaultData();
+  }
+}
+
+let data = load();
+const listeners = new Set();
+
+function current() {
+  return data.years[data.currentYear];
+}
+
+function persist() {
+  localStorage.setItem(KEY, JSON.stringify(data));
+  listeners.forEach((fn) => fn(data));
+}
+
+export const db = {
+  subscribe(fn) {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+  },
+  get() {
+    return current();
+  },
+
+  // --- seasons / years ---
+  getYears() {
+    return Object.keys(data.years).sort();
+  },
+  getCurrentYear() {
+    return data.currentYear;
+  },
+  setCurrentYear(year) {
+    if (!data.years[year]) return false;
+    data.currentYear = year;
+    persist();
+    return true;
+  },
+  renameYear(oldYear, newYear) {
+    const label = String(newYear || '').trim();
+    if (!label || !data.years[oldYear]) return false;
+    if (label === oldYear) return true;
+    if (data.years[label]) return false;
+    data.years[label] = data.years[oldYear];
+    delete data.years[oldYear];
+    if (data.currentYear === oldYear) data.currentYear = label;
+    persist();
+    return true;
+  },
+  /**
+   * Start a new year, seeded from the currently active one: fields and
+   * storages carry over their setup (name, area/geometry, commodity) but
+   * have their season data (yield, urea, seed, current level, opening
+   * stock) reset. Commodities carry over their physical properties (angle
+   * of repose, test weight) but reset MTM price / opening stock / retained
+   * seed. Sales and movements start empty.
+   */
+  createYear(year) {
+    const label = String(year || '').trim();
+    if (!label || data.years[label]) return false;
+    const src = current();
+
+    const idMap = new Map();
+    const commodities = src.commodities.map((c) => {
+      const id = uid();
+      idMap.set(c.id, id);
+      return {
+        id,
+        name: c.name,
+        angleOfRepose: c.angleOfRepose,
+        testWeight: c.testWeight,
+        mtmPrice: 0,
+        openingStock: 0,
+        retainedSeed: 0,
+      };
+    });
+    const mapCommodity = (oldId) => (oldId && idMap.has(oldId) ? idMap.get(oldId) : null);
+
+    const fields = src.fields.map((f) => ({
+      id: uid(),
+      name: f.name,
+      areaHa: f.areaHa,
+      commodityId: mapCommodity(f.commodityId),
+      yieldTHa: 0,
+      yieldMode: 'estimate',
+      ureaRequiredKgHa: 0,
+      ureaAppliedKgHa: 0,
+      seedVariety: '',
+      seedRateKgHa: 0,
+    }));
+
+    const storages = src.storages.map((s) => ({
+      id: uid(),
+      kind: s.kind,
+      name: s.name,
+      commodityId: mapCommodity(s.commodityId),
+      radius: s.radius,
+      coneAngle: s.coneAngle,
+      width: s.width,
+      capacityTons: s.capacityTons,
+      angleOfRepose: s.angleOfRepose,
+      testWeight: s.testWeight,
+      tarpOverhangM: s.tarpOverhangM,
+      currentHeight: 0,
+      length: 0,
+      fillState: 'peak',
+      openingStock: 0,
+      createdAt: Date.now(),
+    }));
+
+    data.years[label] = { commodities, fields, storages, sales: [], movements: [] };
+    data.currentYear = label;
+    persist();
+    return true;
+  },
+  deleteYear(year) {
+    const years = Object.keys(data.years);
+    if (years.length <= 1 || !data.years[year]) return false;
+    delete data.years[year];
+    if (data.currentYear === year) data.currentYear = Object.keys(data.years).sort().slice(-1)[0];
+    persist();
+    return true;
+  },
+
+  // --- commodities ---
+  upsertCommodity(commodity) {
+    const c = current();
+    if (commodity.id) {
+      const idx = c.commodities.findIndex((x) => x.id === commodity.id);
+      if (idx >= 0) c.commodities[idx] = { ...c.commodities[idx], ...commodity };
+    } else {
+      c.commodities.push({
+        mtmPrice: 0, openingStock: 0, retainedSeed: 0, ...commodity, id: uid(),
+      });
+    }
+    persist();
+  },
+  deleteCommodity(id) {
+    current().commodities = current().commodities.filter((c) => c.id !== id);
+    persist();
+  },
+
+  // --- fields (production) ---
+  upsertField(field) {
+    const c = current();
+    if (field.id) {
+      const idx = c.fields.findIndex((f) => f.id === field.id);
+      if (idx >= 0) c.fields[idx] = { ...c.fields[idx], ...field };
+    } else {
+      c.fields.push({ ...field, id: uid() });
+    }
+    persist();
+  },
+  deleteField(id) {
+    current().fields = current().fields.filter((f) => f.id !== id);
+    persist();
+  },
+
+  // --- sales ---
+  upsertSale(sale) {
+    const c = current();
+    if (sale.id) {
+      const idx = c.sales.findIndex((s) => s.id === sale.id);
+      if (idx >= 0) c.sales[idx] = { ...c.sales[idx], ...sale };
+    } else {
+      c.sales.push({ ...sale, id: uid() });
+    }
+    persist();
+  },
+  deleteSale(id) {
+    current().sales = current().sales.filter((s) => s.id !== id);
+    persist();
+  },
+
+  // --- storages (silos / bunkers) ---
+  upsertStorage(storage) {
+    const c = current();
+    if (storage.id) {
+      const idx = c.storages.findIndex((s) => s.id === storage.id);
+      if (idx >= 0) c.storages[idx] = { ...c.storages[idx], ...storage };
+    } else {
+      c.storages.push({ ...storage, id: uid(), createdAt: Date.now() });
+    }
+    persist();
+  },
+  deleteStorage(id) {
+    current().storages = current().storages.filter((s) => s.id !== id);
+    persist();
+  },
+
+  // --- movements (truck tickets) ---
+  upsertMovement(movement) {
+    const c = current();
+    if (movement.id) {
+      const idx = c.movements.findIndex((m) => m.id === movement.id);
+      if (idx >= 0) c.movements[idx] = { ...c.movements[idx], ...movement };
+    } else {
+      c.movements.push({ ...movement, id: uid() });
+    }
+    persist();
+  },
+  deleteMovement(id) {
+    current().movements = current().movements.filter((m) => m.id !== id);
+    persist();
+  },
+
+  exportJSON() {
+    return JSON.stringify(data, null, 2);
+  },
+  importJSON(json) {
+    data = migrate(JSON.parse(json));
+    persist();
+  },
+  resetAll() {
+    data = defaultData();
+    persist();
+  },
+};
+
+export { uid };
