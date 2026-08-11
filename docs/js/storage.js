@@ -1,4 +1,8 @@
-const KEY = 'grainflow.v1';
+// Deliberately different from the main app's key: GitHub Pages user sites
+// share one browser-storage origin across every repo hosted under it
+// (bencarrigan86-ops.github.io), regardless of the folder in the URL, so
+// this must never collide with the real app's storage key.
+const KEY = 'grainflow-demo.v1';
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
