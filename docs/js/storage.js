@@ -28,7 +28,10 @@ function defaultCommodities() {
 }
 
 function defaultOverheads() {
-  return { finance: 0, equipmentRepayments: 0, depreciation: 0, wages: 0, drawings: 0 };
+  return {
+    finance: 0, equipmentRepayments: 0, depreciation: 0, wages: 0, drawings: 0,
+    admin: 0, energy: 0, insurance: 0, repairsMaintenance: 0, other: 0,
+  };
 }
 
 // Nitrogen required per tonne of grain (kg N/t), keyed by normalized commodity
@@ -81,7 +84,10 @@ function defaultYear() {
     movements: [
       { id: 'msoadgrgpr8t2s', date: '2026-11-18', fromType: 'field', fromId: 'msoactt1a1hbqj', toType: 'silo', toId: 'msoadgd3xpn0t4', truckRego: '1ABC234', driver: 'Dave', tons: 22.4, weightStatus: 'final', notes: '' },
     ],
-    overheads: { finance: 40000, equipmentRepayments: 35000, depreciation: 60000, wages: 45000, drawings: 60000 },
+    overheads: {
+      finance: 40000, equipmentRepayments: 35000, depreciation: 60000, wages: 45000, drawings: 60000,
+      admin: 8000, energy: 18000, insurance: 12000, repairsMaintenance: 30000, other: 5000,
+    },
   };
 }
 
