@@ -88,6 +88,7 @@ function defaultYear() {
       finance: 40000, equipmentRepayments: 35000, depreciation: 60000, wages: 45000, drawings: 60000,
       admin: 8000, energy: 18000, insurance: 12000, repairsMaintenance: 30000, other: 5000,
     },
+    invoices: [],
   };
 }
 
@@ -111,6 +112,7 @@ function defaultData() {
     years: { [year]: defaultYear() },
     businessDetails: defaultBusinessDetails(),
     nextMovementNo: 2, // one seeded movement already uses ticketNo 1
+    nextInvoiceNo: 1,
   };
 }
 
@@ -159,6 +161,7 @@ function migrate(parsed) {
       ),
       businessDetails: { ...defaultBusinessDetails(), ...(parsed.businessDetails || {}) },
       nextMovementNo: parsed.nextMovementNo,
+      nextInvoiceNo: parsed.nextInvoiceNo || 1,
     };
     return backfillMovementNos(result);
   }
@@ -176,6 +179,7 @@ function migrate(parsed) {
       } },
       businessDetails: defaultBusinessDetails(),
       nextMovementNo: parsed.nextMovementNo,
+      nextInvoiceNo: 1,
     };
     return backfillMovementNos(result);
   }
@@ -251,7 +255,7 @@ export const db = {
    * stock) reset. Commodities carry over their physical properties (angle
    * of repose, test weight, N required per tonne) but reset MTM price /
    * opening stock / retained seed / gross margin cost. Overheads reset to
-   * zero. Sales and movements start empty.
+   * zero. Sales, movements, and invoices start empty.
    */
   createYear(year) {
     const label = String(year || '').trim();
@@ -308,7 +312,7 @@ export const db = {
       createdAt: Date.now(),
     }));
 
-    data.years[label] = { commodities, fields, storages, sales: [], movements: [], overheads: defaultOverheads() };
+    data.years[label] = { commodities, fields, storages, sales: [], movements: [], overheads: defaultOverheads(), invoices: [] };
     data.currentYear = label;
     persist();
     return true;
@@ -402,6 +406,35 @@ export const db = {
   },
   deleteMovement(id) {
     current().movements = current().movements.filter((m) => m.id !== id);
+    persist();
+  },
+
+  // --- invoices (per season, tied to a sale) ---
+  getInvoicesForSale(saleId) {
+    return current().invoices.filter((inv) => inv.saleId === saleId);
+  },
+  /**
+   * Create an invoice from a snapshot the caller has already computed
+   * (lines + totals) — invoiced amounts stay fixed even if the sale's price
+   * or the business's details are edited later. Assigns the next farm-wide
+   * invoice number and starts as outstanding.
+   */
+  createInvoice(invoice) {
+    const inv = { ...invoice, id: uid(), invoiceNo: data.nextInvoiceNo, status: 'outstanding', paidDate: null };
+    data.nextInvoiceNo += 1;
+    current().invoices.push(inv);
+    persist();
+    return inv;
+  },
+  setInvoiceStatus(id, status) {
+    const c = current();
+    const idx = c.invoices.findIndex((inv) => inv.id === id);
+    if (idx < 0) return;
+    c.invoices[idx] = { ...c.invoices[idx], status, paidDate: status === 'paid' ? new Date().toISOString().slice(0, 10) : null };
+    persist();
+  },
+  deleteInvoice(id) {
+    current().invoices = current().invoices.filter((inv) => inv.id !== id);
     persist();
   },
 
