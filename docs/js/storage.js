@@ -82,7 +82,7 @@ function defaultYear() {
       { id: 'msoadgjk4qccfc', kind: 'bunker', name: 'Bunker 1', commodityId: 'msoaclr4wmiuqh', openingStock: 0, capacityTons: null, angleOfRepose: 24, testWeight: null, width: 24, length: 60, tarpOverhangM: 1.5, createdAt: 1786430127872 },
     ],
     movements: [
-      { id: 'msoadgrgpr8t2s', date: '2026-11-18', fromType: 'field', fromId: 'msoactt1a1hbqj', toType: 'silo', toId: 'msoadgd3xpn0t4', truckRego: '1ABC234', driver: 'Dave', tons: 22.4, weightStatus: 'final', notes: '' },
+      { id: 'msoadgrgpr8t2s', date: '2026-11-18', fromType: 'field', fromId: 'msoactt1a1hbqj', toType: 'silo', toId: 'msoadgd3xpn0t4', truckRego: '1ABC234', driver: 'Dave', tons: 22.4, weightStatus: 'final', notes: '', ticketNo: 1 },
     ],
     overheads: {
       finance: 40000, equipmentRepayments: 35000, depreciation: 60000, wages: 45000, drawings: 60000,
@@ -110,15 +110,41 @@ function defaultData() {
     currentYear: year,
     years: { [year]: defaultYear() },
     businessDetails: defaultBusinessDetails(),
+    nextMovementNo: 2, // one seeded movement already uses ticketNo 1
   };
+}
+
+// Movement ticket numbers are farm-wide and never reused (not per-year, so
+// they stay meaningful across season changes) — assign them to any
+// movement that predates this field, in date order, without colliding with
+// numbers already assigned.
+function backfillMovementNos(result) {
+  const used = new Set();
+  Object.values(result.years).forEach((y) => {
+    (y.movements || []).forEach((m) => { if (m.ticketNo) used.add(m.ticketNo); });
+  });
+  let next = Number(result.nextMovementNo) || 1;
+  const unnumbered = [];
+  Object.values(result.years).forEach((y) => {
+    (y.movements || []).forEach((m) => { if (!m.ticketNo) unnumbered.push(m); });
+  });
+  unnumbered
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+    .forEach((m) => {
+      while (used.has(next)) next++;
+      m.ticketNo = next;
+      used.add(next);
+      next++;
+    });
+  result.nextMovementNo = next;
+  return result;
 }
 
 // Bring an older single-season save (or one missing fields we've since added)
 // up to the current {version, currentYear, years} shape without losing data.
 function migrate(parsed) {
   if (parsed && parsed.years && typeof parsed.years === 'object') {
-    const fresh = defaultData();
-    return {
+    const result = {
       version: 2,
       currentYear: parsed.currentYear && parsed.years[parsed.currentYear] ? parsed.currentYear : Object.keys(parsed.years)[0],
       years: Object.fromEntries(
@@ -132,13 +158,15 @@ function migrate(parsed) {
         })
       ),
       businessDetails: { ...defaultBusinessDetails(), ...(parsed.businessDetails || {}) },
-    } || fresh;
+      nextMovementNo: parsed.nextMovementNo,
+    };
+    return backfillMovementNos(result);
   }
   // Old flat shape: { commodities, fields, sales, storages, movements }
   if (parsed && (parsed.commodities || parsed.fields || parsed.sales || parsed.storages)) {
     const year = String(new Date().getFullYear());
     const merged = { ...defaultYear(), ...parsed };
-    return {
+    const result = {
       version: 2,
       currentYear: year,
       years: { [year]: {
@@ -147,7 +175,9 @@ function migrate(parsed) {
         overheads: { ...defaultOverheads(), ...(parsed.overheads || {}) },
       } },
       businessDetails: defaultBusinessDetails(),
+      nextMovementNo: parsed.nextMovementNo,
     };
+    return backfillMovementNos(result);
   }
   return defaultData();
 }
@@ -365,7 +395,8 @@ export const db = {
       const idx = c.movements.findIndex((m) => m.id === movement.id);
       if (idx >= 0) c.movements[idx] = { ...c.movements[idx], ...movement };
     } else {
-      c.movements.push({ ...movement, id: uid() });
+      c.movements.push({ ...movement, id: uid(), ticketNo: data.nextMovementNo });
+      data.nextMovementNo += 1;
     }
     persist();
   },
