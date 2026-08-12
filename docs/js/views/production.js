@@ -1,7 +1,8 @@
-import { db } from '../storage.js?v=29';
-import { productionByCommodity, fieldTons, estimateFieldTons, movementTonsFromField, fieldUrea, fieldSeed, groupFieldsByCommodity } from '../derived.js?v=29';
-import { num, tons, ha, esc } from '../fmt.js?v=29';
-import { openSheet, closeSheet, field, getVal, getNum, confirmDelete } from '../ui.js?v=29';
+import { db } from '../storage.js?v=31';
+import { productionByCommodity, fieldTons, estimateFieldTons, movementTonsFromField, fieldUrea, fieldSeed, groupFieldsByCommodity } from '../derived.js?v=31';
+import { num, tons, ha, esc } from '../fmt.js?v=31';
+import { openSheet, closeSheet, field, getVal, getNum, confirmDelete } from '../ui.js?v=31';
+import { renderRelatedMovements } from './movements.js?v=31';
 
 let unsub = null;
 
@@ -72,11 +73,14 @@ function fieldRow(f, movements) {
   const isActual = f.yieldMode === 'actual';
   const t = fieldTons(f, movements);
   const yieldTHa = f.areaHa > 0 ? t / f.areaHa : 0;
+  const actualTons = movementTonsFromField(f.id, movements);
+  const actualYieldTHa = f.areaHa > 0 ? actualTons / f.areaHa : 0;
   return `
     <div class="list-item" data-edit-field="${f.id}">
       <div>
         <div class="main">${esc(f.name)}</div>
         <div class="meta">${ha(f.areaHa)} · <span class="badge ${isActual ? 'pos' : 'neg'}">${isActual ? 'Actual' : 'Estimate'}</span></div>
+        ${!isActual && actualTons > 0 ? `<div class="meta">Actual (movements): ${num(actualTons, 1)} t · ${num(actualYieldTHa, 2)} t/ha</div>` : ''}
       </div>
       <div class="right">
         <div class="main">${tons(t)}</div>
@@ -118,9 +122,11 @@ function openFieldSheet(existing) {
         ${field({ label: 'Seed rate (kg/ha)', id: 'seedRate', type: 'number', step: '1', value: existing?.seedRateKgHa ?? 0 })}
       </div>
       <div class="row"><span class="label">Seed required</span><span class="value" id="seed-preview">0.0 t</span></div>
+      ${existing ? `<div id="related-movements" style="margin:12px 0"></div>` : ''}
       <button class="btn" id="save" style="margin-top:12px">Save</button>
       ${existing ? `<button class="btn danger" id="del" style="margin-top:8px">Delete field</button>` : ''}
     `;
+    if (existing) renderRelatedMovements(root.querySelector('#related-movements'), 'field', existing.id);
 
     let yieldMode = existing?.yieldMode || 'estimate';
     const preview = root.querySelector('#tons-preview');
