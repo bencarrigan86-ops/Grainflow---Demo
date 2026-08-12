@@ -74,8 +74,8 @@ function defaultYear() {
       { id: 'msoacu4lhqzjhb', name: 'Home Paddock', areaHa: 95, commodityId: 'msoaclr4mmfx5i', yieldTHa: 2.1, yieldMode: 'estimate', ureaRequiredKgHa: 0, ureaAppliedKgHa: 0, seedVariety: 'Kyabra', seedRateKgHa: 90 },
     ],
     sales: [
-      { id: 'msoad38fu5po5n', date: '', commodityId: 'msoaclr41fqqln', grade: 'APW1', buyer: 'CBH', contractNo: 'C-10245', location: 'Wagga Wagga', deliveryStart: '2026-11-15', deliveryEnd: '2026-12-15', tons: 900, tonsDelivered: 400, price: 350, freight: 22, premiumDiscount: 0, leviesPct: 0.0102, tolerancePct: 5, toleranceCapTons: 20, brokerNote: '', notes: '' },
-      { id: 'msoad3chrx534o', date: '', commodityId: 'msoaclr4wmiuqh', grade: 'F1', buyer: 'Cargill', contractNo: 'C-10301', location: 'Junee', deliveryStart: '2026-12-01', deliveryEnd: '2026-12-31', tons: 400, tonsDelivered: 0, price: 285, freight: 18, premiumDiscount: 0, leviesPct: 0.0102, tolerancePct: 5, toleranceCapTons: 20, brokerNote: '', notes: '' },
+      { id: 'msoad38fu5po5n', date: '', commodityId: 'msoaclr41fqqln', grade: 'APW1', buyer: 'CBH', contractNo: 'C-10245', location: 'Wagga Wagga', deliveryStart: '2026-11-15', deliveryEnd: '2026-12-15', tons: 900, tonsDelivered: 400, price: 350, freight: 22, premiumDiscount: 0, leviesPct: 0.0102, tolerancePct: 5, toleranceCapTons: 20, brokerNote: '', notes: '', buyerAbn: '23 456 789 012', buyerAddress: '1 Grain Way, Wagga Wagga NSW' },
+      { id: 'msoad3chrx534o', date: '', commodityId: 'msoaclr4wmiuqh', grade: 'F1', buyer: 'Cargill', contractNo: 'C-10301', location: 'Junee', deliveryStart: '2026-12-01', deliveryEnd: '2026-12-31', tons: 400, tonsDelivered: 0, price: 285, freight: 18, premiumDiscount: 0, leviesPct: 0.0102, tolerancePct: 5, toleranceCapTons: 20, brokerNote: '', notes: '', buyerAbn: '34 567 890 123', buyerAddress: '2 Cargill Court, Junee NSW' },
     ],
     storages: [
       { id: 'msoadgd3xpn0t4', kind: 'silo', name: 'Silo 1 (155t)', commodityId: 'msoaclr41fqqln', openingStock: 40, capacityTons: 155, angleOfRepose: null, testWeight: null, radius: 2.95, coneAngle: 35, currentHeight: 4.8, fillState: 'peak', createdAt: 1786430127639 },
@@ -91,12 +91,25 @@ function defaultYear() {
   };
 }
 
+// Not per-year — the farm's own details barely change season to season, and
+// are used to fill in the "Seller" side of a generated sale invoice.
+function defaultBusinessDetails() {
+  return {
+    entityName: 'Grainflow Demo Farm Pty Ltd', abn: '11 222 333 444', ngr: '12345678',
+    contactName: 'Sam Grower', phone: '0400 000 000', email: 'demo@example.com',
+    address: '123 Sample Road, Wagga Wagga NSW',
+    paymentTermsDays: 14,
+    bankName: 'Demo Bank', accountName: 'Grainflow Demo Farm Pty Ltd', bsb: '000-000', accountNumber: '00000000',
+  };
+}
+
 function defaultData() {
   const year = String(new Date().getFullYear());
   return {
     version: 2,
     currentYear: year,
     years: { [year]: defaultYear() },
+    businessDetails: defaultBusinessDetails(),
   };
 }
 
@@ -118,6 +131,7 @@ function migrate(parsed) {
           }];
         })
       ),
+      businessDetails: { ...defaultBusinessDetails(), ...(parsed.businessDetails || {}) },
     } || fresh;
   }
   // Old flat shape: { commodities, fields, sales, storages, movements }
@@ -132,6 +146,7 @@ function migrate(parsed) {
         commodities: backfillNPerTonne(merged.commodities),
         overheads: { ...defaultOverheads(), ...(parsed.overheads || {}) },
       } },
+      businessDetails: defaultBusinessDetails(),
     };
   }
   return defaultData();
@@ -156,7 +171,13 @@ function current() {
 }
 
 function persist() {
-  localStorage.setItem(KEY, JSON.stringify(data));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(data));
+  } catch (e) {
+    console.error('Failed to save data', e);
+    alert('Could not save — your device storage may be full. Try removing a movement photo and saving again.');
+    return;
+  }
   listeners.forEach((fn) => fn(data));
 }
 
@@ -359,6 +380,15 @@ export const db = {
   },
   updateOverheads(patch) {
     current().overheads = { ...current().overheads, ...patch };
+    persist();
+  },
+
+  // --- business details (not per-year — used to fill in a sale invoice) ---
+  getBusinessDetails() {
+    return data.businessDetails;
+  },
+  updateBusinessDetails(patch) {
+    data.businessDetails = { ...data.businessDetails, ...patch };
     persist();
   },
 
