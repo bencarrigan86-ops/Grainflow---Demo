@@ -82,7 +82,7 @@ function defaultYear() {
       { id: 'msoadgjk4qccfc', kind: 'bunker', name: 'Bunker 1', commodityId: 'msoaclr4wmiuqh', openingStock: 0, capacityTons: null, angleOfRepose: 24, testWeight: null, width: 24, length: 60, tarpOverhangM: 1.5, createdAt: 1786430127872 },
     ],
     movements: [
-      { id: 'msoadgrgpr8t2s', date: '2026-11-18', fromType: 'field', fromId: 'msoactt1a1hbqj', toType: 'silo', toId: 'msoadgd3xpn0t4', truckRego: '1ABC234', driver: 'Dave', tons: 22.4, weightStatus: 'final', notes: '', ticketNo: 1 },
+      { id: 'msoadgrgpr8t2s', date: '2026-11-18', froms: [{ type: 'field', id: 'msoactt1a1hbqj', tons: 22.4 }], toType: 'silo', toId: 'msoadgd3xpn0t4', truckRego: '1ABC234', driver: 'Dave', grossWeight: null, tareWeight: null, tons: 22.4, weightStatus: 'final', notes: '', ticketNo: 1 },
     ],
     overheads: {
       finance: 40000, equipmentRepayments: 35000, depreciation: 60000, wages: 45000, drawings: 60000,
@@ -142,6 +142,20 @@ function backfillMovementNos(result) {
   return result;
 }
 
+// Movements used to have a single `fromType`/`fromId` source; multi-source
+// loads (a truck filling from more than one silo/field) need
+// `froms: [{ type, id, tons }]` instead — convert any movement still in the
+// old single-source shape so every consumer can assume `froms` exists.
+function backfillMovementFroms(result) {
+  Object.values(result.years).forEach((y) => {
+    y.movements = (y.movements || []).map((m) => {
+      if (m.froms) return m;
+      return { ...m, froms: [{ type: m.fromType, id: m.fromId, tons: m.tons }] };
+    });
+  });
+  return result;
+}
+
 // Bring an older single-season save (or one missing fields we've since added)
 // up to the current {version, currentYear, years} shape without losing data.
 function migrate(parsed) {
@@ -163,7 +177,7 @@ function migrate(parsed) {
       nextMovementNo: parsed.nextMovementNo,
       nextInvoiceNo: parsed.nextInvoiceNo || 1,
     };
-    return backfillMovementNos(result);
+    return backfillMovementNos(backfillMovementFroms(result));
   }
   // Old flat shape: { commodities, fields, sales, storages, movements }
   if (parsed && (parsed.commodities || parsed.fields || parsed.sales || parsed.storages)) {
@@ -181,7 +195,7 @@ function migrate(parsed) {
       nextMovementNo: parsed.nextMovementNo,
       nextInvoiceNo: 1,
     };
-    return backfillMovementNos(result);
+    return backfillMovementNos(backfillMovementFroms(result));
   }
   return defaultData();
 }
